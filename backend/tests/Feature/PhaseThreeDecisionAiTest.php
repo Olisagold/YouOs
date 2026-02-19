@@ -33,7 +33,7 @@ class PhaseThreeDecisionAiTest extends TestCase
                                 'confidence' => 84,
                                 'reasoning' => ['Aligned with ranked goals', 'Supports discipline'],
                                 'risks' => ['Execution fatigue'],
-                                'better_option' => 'Proceed with a smaller first step',
+                                'better_option' => '',
                                 'next_steps' => ['Schedule first action', 'Define success metric'],
                             ]),
                         ],
@@ -105,7 +105,7 @@ class PhaseThreeDecisionAiTest extends TestCase
 
         $this->postJson('/api/v1/decisions', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('error.code', 'ai_response_invalid');
+            ->assertJsonPath('error', 'ai_response_invalid');
 
         $this->assertDatabaseCount('decisions', 0);
     }
@@ -132,7 +132,7 @@ class PhaseThreeDecisionAiTest extends TestCase
 
         $this->postJson('/api/v1/decisions', $payload)
             ->assertStatus(503)
-            ->assertJsonPath('error.code', 'openrouter_unavailable');
+            ->assertJsonPath('error', 'openrouter_unavailable');
 
         $this->assertDatabaseCount('decisions', 0);
     }

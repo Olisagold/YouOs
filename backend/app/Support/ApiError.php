@@ -13,12 +13,15 @@ final class ApiError
 
     public static function response(string $code, string $message, int $status, array $details = []): JsonResponse
     {
-        return response()->json([
-            'error' => [
-                'code' => $code,
-                'message' => $message,
-                'details' => $details,
-            ],
-        ], $status);
+        $payload = [
+            'error' => $code,
+            'message' => $message,
+        ];
+
+        if ($details !== []) {
+            $payload['details'] = $details;
+        }
+
+        return response()->json($payload, $status);
     }
 }

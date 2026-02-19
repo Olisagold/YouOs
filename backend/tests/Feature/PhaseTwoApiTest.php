@@ -51,7 +51,7 @@ class PhaseTwoApiTest extends TestCase
 
         $this->postJson('/api/v1/decisions', $decisionPayload)
             ->assertStatus(422)
-            ->assertJsonPath('error.code', 'doctrine_required');
+            ->assertJsonPath('error', 'doctrine_required');
 
         Doctrine::create([
             'user_id' => $user->id,
@@ -68,7 +68,7 @@ class PhaseTwoApiTest extends TestCase
 
         $this->postJson('/api/v1/decisions', $decisionPayload)
             ->assertStatus(422)
-            ->assertJsonPath('error.code', 'daily_checkin_required');
+            ->assertJsonPath('error', 'daily_checkin_required');
     }
 
     public function test_doctrine_upsert_updates_existing_record_for_same_user(): void

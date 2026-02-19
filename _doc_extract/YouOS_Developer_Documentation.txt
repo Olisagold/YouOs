@@ -1,0 +1,903 @@
+﻿YOU OS
+Stoic Disciplined Coach
+────────────────────────────────
+Complete Developer Technical Reference
+Laravel
+Vue.js
+MySQL
+OpenRouter
+
+1. Project Overview & Vision
+
+You OS is a personal decision engine and discipline operating system. It is NOT a general-purpose chatbot or journaling app. Its sole purpose is to guide a user toward daily and weekly goal achievement through structured, doctrine-driven reasoning powered by an LLM. Every feature, screen, and API call must serve this single purpose.
+
+1.1 Core Identity (Non-Negotiable)
+Stoic Disciplined Coach — the AI voice must be firm, objective, and emotionless.
+Rule-First Reasoning — every AI verdict is anchored to the user's own declared doctrine (goals, rules, habits).
+Objective Over Emotion — the system must not validate feelings; it validates actions against goals.
+Structured Verdicts, Not Chat Responses — the AI NEVER returns free text. It always returns a defined JSON schema.
+
+Developer Implication: Do not allow the LLM to respond with plain text. Every AI call must enforce a strict JSON output schema. If the model returns anything outside the schema, it is treated as an error — re-prompt or flag.
+
+1.2 What You OS Is NOT
+NOT a chatbot — there is no free-form conversational interface.
+NOT a journaling app — check-ins are inputs to the decision engine, not diary entries.
+NOT a habit tracker alone — habit data feeds AI decisions, not a standalone feature.
+NOT a motivational app — verdicts can be harsh, rejecting a user's preferred choice if it conflicts with their doctrine.
+
+
+2. System Architecture
+
+2.1 Technology Stack
+Layer
+Technology / Detail
+Frontend
+Vue.js (Single Page Application — SPA)
+Backend
+Laravel (API-only, no Blade views for main app)
+Database
+MySQL
+LLM Provider
+OpenRouter API — model: meta-llama/llama-3.3-70b-instruct:free
+Auth
+Laravel Sanctum (token-based, SPA-compatible)
+HTTP Client
+Laravel built-in Http facade (Guzzle wrapper)
+
+2.2 Request Flow (Full Lifecycle)
+Every user action that triggers an AI decision follows this exact path. Developers must not create shortcuts that bypass any step:
+
+User interacts with Vue.js UI (fills decision form, check-in, etc.)
+Vue sends authenticated API request to Laravel backend (Sanctum token in header).
+Laravel controller validates the request, fetches user's Doctrine from MySQL.
+Laravel fetches today's Daily Check-In from MySQL (if it exists).
+Laravel builds the structured LLM prompt (doctrine + check-in state + decision context + required output schema).
+Laravel calls OpenRouter API (POST /v1/chat/completions), passing the prompt and the llama-3.3-70b model.
+Laravel receives and validates the JSON response from OpenRouter.
+Laravel stores the decision record (context + AI response) in MySQL decisions table.
+Laravel returns structured JSON response to Vue frontend.
+Vue.js renders the verdict card to the user.
+
+Critical: The OpenRouter API key must never be passed to, exposed to, or accessible by the Vue.js frontend. All LLM calls are backend-only.
+
+
+3. Core Modules — Detailed Specifications
+
+3A. Doctrine Module (Knowledge Base)
+The Doctrine is the single most critical data entity in You OS. It is the user's declared operating system — their goals, rules, habits, and risk tolerance. Every AI decision is made against this doctrine. If the doctrine is empty or incomplete, the AI cannot make meaningful decisions.
+
+3A.1 Doctrine Fields
+Field
+Type
+Description
+goals_json
+JSON Array
+Ranked list of user's life/work goals. Order matters — goal #1 outweighs goal #5 in AI reasoning.
+rules_json
+JSON Array
+Non-negotiable rules the user has set (e.g., 'Never trade after 8PM', 'No junk food on weekdays').
+habits_json
+JSON Array
+Known bad habits and triggers to avoid (e.g., 'Emotional trading', 'Binge eating when stressed').
+weekly_targets_json
+JSON Array
+Specific measurable targets for the current week (e.g., 'Complete 3 workouts', 'Earn 50k revenue').
+
+3A.2 Doctrine UX & Behavior
+A user can only have ONE active doctrine record at a time.
+Doctrine is editable at any time via the DoctrineSettings.vue page.
+When doctrine is saved, the system does NOT create a new record — it UPDATES the existing one (per user_id).
+If no doctrine exists for a user, the decision engine should block and prompt: 'Set your doctrine before making decisions.'
+Goals must be sortable (drag-and-drop or numbered input) because rank order is passed to the AI.
+
+Developer note: The goals_json field should store items with a 'rank' integer property. Example: [{rank: 1, goal: 'Build a profitable trading business'}, {rank: 2, goal: 'Achieve financial independence by 35'}]
+
+3B. Daily Check-In Module
+The Daily Check-In is a lightweight state snapshot taken each day. It contextualizes the user's current capacity so the AI can factor in real-world conditions when making decisions. A user with energy:2 and mood:3 should receive different advice than one with energy:9 and mood:8.
+
+3B.1 Check-In Fields
+Field
+Constraints
+Purpose
+energy
+Integer 1–10
+Physical/mental energy level. 1=Exhausted, 10=Peak. AI uses this to adjust intensity of advice.
+mood
+Integer 1–10
+Emotional state. 1=Extremely low, 10=Excellent. Low mood triggers bias warnings in AI.
+missions_json
+JSON Array, max 3 items
+Top 3 most important tasks the user must complete today. These override general goals during decision-making.
+notes
+Text, optional
+Free-form context (e.g., 'I slept 4 hours' or 'Major client meeting today'). Passed raw to AI.
+
+3B.2 Check-In Rules & Logic
+Only ONE check-in per user per calendar day. The system checks for an existing check-in by user_id + date(created_at) before allowing a new one.
+Check-in is REQUIRED before a decision can be submitted. If today's check-in is missing, the AskDecision page should redirect to DailyCheckin page with a message.
+Missions (top 3) must be validated: max 3 items, each a non-empty string. The form must enforce this limit on the frontend AND backend.
+If a user misses a day, there is no check-in for that date. There is no backfilling of check-ins.
+
+3C. Decision Engine Module
+This is the heart of You OS. The decision engine takes the user's request, cross-references it against their doctrine and daily state, and returns a structured verdict from the AI. All logic here is category-driven — different decision types may prompt for different contextual fields.
+
+3C.1 Decision Categories
+Each decision must be tagged with one of the following categories. Categories help the AI frame its reasoning appropriately:
+Category
+Description / Example Use Case
+Financial
+Trading decisions, investments, purchases, expense approvals. Highest stakes — AI applies strict rule checks.
+Health
+Exercise, diet, rest, medical decisions. AI cross-checks energy/mood vs. physical goals.
+Work / Productivity
+Task prioritization, project commitments, deadline-related decisions.
+Social / Relationships
+Social commitments, boundary decisions. AI checks if they conflict with focus goals.
+Mindset / Habit
+Requests to make exceptions to rules or habits. AI is especially strict here.
+Other
+Fallback category for decisions that don't fit. AI reasoning is more general.
+
+3C.2 Decision Form Fields
+Field
+Required
+Notes
+category
+Yes
+One of the 6 categories listed above. Dropdown select on frontend.
+context_json
+Yes
+A structured JSON object describing the decision. See context schema below.
+final_choice
+No (set after)
+What the user actually chose to do. Filled in after receiving the verdict — not before.
+outcome_notes
+No (set after)
+Free text on what happened as a result. Updated by user after acting.
+
+3C.3 Context JSON Schema
+The context_json field captures the details of the specific decision being evaluated. Minimum required fields:
+{ "what": "string — what exactly the user wants to do",
+  "why": "string — the user's stated reason or motivation",
+  "when": "string — timing (e.g., 'right now', 'tonight', 'this week')",
+  "alternatives": ["string", ...] — other options considered (optional, array)",
+  "urgency": "low | medium | high",
+  "estimated_impact": "string — user's self-assessment of what this will change" }
+
+3C.4 AI Verdict JSON Output Schema
+The AI must ALWAYS return exactly this structure. No extra keys, no omitted keys. Laravel must validate this schema before saving.
+{ "verdict": "approve | reject | delay",
+  "confidence": integer 0-100,
+  "reasoning": ["bullet point 1", "bullet point 2", ...],
+  "risks": ["risk 1", "risk 2", ...],
+  "better_option": "string — what the AI recommends instead (if not approving)",
+  "next_steps": ["step 1", "step 2", ...] }
+
+verdict: One of exactly three values — 'approve', 'reject', or 'delay'. Delay means 'not now, but possibly later'.
+confidence: 0 = AI has no basis to decide, 100 = doctrine clearly dictates the answer.
+reasoning: Array of strings. Minimum 2 items, maximum 6. Each item is a doctrine-anchored reason.
+risks: Array of strings. Can be empty array [] if no risks identified.
+better_option: A single string. Empty string if verdict is 'approve'.
+next_steps: Array of strings. Actionable steps, regardless of verdict.
+
+Error handling: If the AI returns malformed JSON, a response with missing required fields, or a verdict outside the three allowed values — the system must NOT save the response. It should log the raw API response, return an error to the frontend, and suggest the user retry.
+
+3D. Discipline Log Module
+The Discipline Log records what the user actually did after receiving a verdict. It tracks compliance, overrides (user ignores the AI), and violations. This data powers the Weekly Review and streak calculations.
+
+3D.1 Log Entry Types
+Log Type
+When It Is Recorded
+Complied
+User followed the AI verdict (chose what AI approved, or did NOT do what AI rejected).
+Override
+User received a verdict but chose differently. Override is logged with a reason field.
+Violation
+User broke one of their own non-negotiable rules (even without asking the AI).
+Skipped
+User did not act on the decision or did not log the outcome. Auto-flagged after 24h.
+
+3D.2 Streak Calculation Logic
+A 'discipline streak' is the number of consecutive days in which the user: completed a check-in AND had zero overrides AND had zero violations.
+A streak is broken if any of those three conditions fails for a day.
+Streaks are calculated at time of query (not stored as a counter) to avoid drift.
+Streak display: Show current streak, longest streak, and streak broken date if applicable.
+
+3E. Weekly Review Engine
+The Weekly Review is an AI-powered summary generated at the end of each week (triggered manually by user, or automatically on Sunday). It analyzes the week's check-ins, decisions, and discipline log to produce a summary, detect patterns, and issue an improvement directive.
+
+3E.1 Weekly Review Output Schema
+Like all AI outputs, the Weekly Review must return structured JSON:
+{ "week_summary": "string — 3-5 sentence narrative of the week",
+  "compliance_rate": float 0.0–1.0,
+  "patterns_detected": ["pattern 1", "pattern 2", ...],
+  "strongest_day": "day name or date",
+  "weakest_day": "day name or date",
+  "override_analysis": "string — why user overrode AI and impact",
+  "directive": "string — ONE clear improvement directive for next week",
+  "doctrine_alignment_score": integer 0–100 }
+
+3E.2 Weekly Review Trigger
+Manual trigger: User clicks 'Generate Weekly Review' button on WeeklyReview.vue.
+The review covers the 7 days ending on the most recent Sunday (or today if triggered mid-week, covering partial week).
+The system fetches all check-ins, decisions, and discipline log entries for the period and passes them as context to the AI.
+Weekly reviews are stored in a separate weekly_reviews table for history.
+
+
+4. Database Schema — Full Specification
+
+4.1 users table
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+Auto-increment primary key
+name
+VARCHAR(255)
+No
+User's display name
+email
+VARCHAR(255)
+No
+Unique. Used for login.
+password
+VARCHAR(255)
+No
+Bcrypt hashed. Never plain text.
+email_verified_at
+TIMESTAMP
+Yes
+Null if email not verified.
+remember_token
+VARCHAR(100)
+Yes
+For 'remember me' sessions.
+created_at
+TIMESTAMP
+No
+Set by Laravel automatically.
+updated_at
+TIMESTAMP
+No
+Set by Laravel automatically.
+
+4.2 doctrines table
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+
+user_id
+BIGINT UNSIGNED FK
+No
+FK → users.id. UNIQUE constraint (one doctrine per user).
+goals_json
+JSON
+Yes
+Array of {rank: int, goal: string} objects. Ordered by rank.
+rules_json
+JSON
+Yes
+Array of strings. Non-negotiable user rules.
+habits_json
+JSON
+Yes
+Array of {habit: string, trigger: string} objects.
+weekly_targets_json
+JSON
+Yes
+Array of {target: string, metric: string, current: number, goal: number}.
+created_at
+TIMESTAMP
+No
+
+updated_at
+TIMESTAMP
+No
+Updated on every doctrine save.
+
+UNIQUE constraint on user_id in doctrines is critical. Use updateOrCreate() in Laravel when saving doctrine — never insert duplicates.
+
+4.3 daily_checkins table
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+
+user_id
+BIGINT UNSIGNED FK
+No
+FK → users.id
+energy
+TINYINT UNSIGNED
+No
+1–10. Add CHECK constraint if MySQL 8.0+.
+mood
+TINYINT UNSIGNED
+No
+1–10. Add CHECK constraint if MySQL 8.0+.
+missions_json
+JSON
+No
+Array of up to 3 strings. Never empty.
+notes
+TEXT
+Yes
+Optional free text. No character limit enforced by DB.
+created_at
+TIMESTAMP
+No
+Used to enforce one check-in per day (date(created_at) = today).
+updated_at
+TIMESTAMP
+No
+
+
+4.4 decisions table
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+
+user_id
+BIGINT UNSIGNED FK
+No
+FK → users.id
+category
+ENUM(...)
+No
+financial|health|work|social|mindset|other
+context_json
+JSON
+No
+The structured decision input submitted by the user.
+ai_response_json
+JSON
+No
+The full validated AI verdict object.
+final_choice
+TEXT
+Yes
+What user actually did. Null until user updates.
+outcome_notes
+TEXT
+Yes
+User's notes on outcome. Null until user updates.
+created_at
+TIMESTAMP
+No
+When the decision was submitted.
+updated_at
+TIMESTAMP
+No
+Updated when user logs final_choice or outcome.
+
+4.5 discipline_logs table (Implied, to be created)
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+
+user_id
+BIGINT UNSIGNED FK
+No
+FK → users.id
+decision_id
+BIGINT UNSIGNED FK
+Yes
+FK → decisions.id. Null for rule violations logged outside decisions.
+log_type
+ENUM
+No
+complied|override|violation|skipped
+reason
+TEXT
+Yes
+Required if log_type = override or violation.
+logged_at
+TIMESTAMP
+No
+When the log entry was created.
+
+4.6 weekly_reviews table (Implied, to be created)
+Column
+Type
+Nullable
+Notes
+id
+BIGINT UNSIGNED AI PK
+No
+
+user_id
+BIGINT UNSIGNED FK
+No
+FK → users.id
+week_start
+DATE
+No
+Monday of the reviewed week.
+week_end
+DATE
+No
+Sunday of the reviewed week.
+ai_review_json
+JSON
+No
+Full AI weekly review output object.
+created_at
+TIMESTAMP
+No
+When review was generated.
+
+
+5. LLM Prompt Engineering — Full Specification
+
+Every prompt sent to OpenRouter must follow a strict structure. Developers must not improvise prompt wording. The following templates define the exact structure. Variable substitutions are shown in {curly braces}.
+
+5.1 System Prompt (constant for all decisions)
+This is the 'role' message passed as the system role in the OpenRouter messages array.
+
+You are a Stoic Disciplined Decision Coach — not a motivator, not a friend.
+Your job is to evaluate the user's request against their doctrine STRICTLY.
+You operate on rules first, emotions never.
+You must always return ONLY a valid JSON object. No preamble. No explanation outside JSON.
+No markdown. No code fences. Return raw JSON only.
+The required JSON schema is provided in each user message.
+
+5.2 User Message Template (decision request)
+This is built programmatically in Laravel and passed as the 'user' role message:
+=== USER DOCTRINE ===
+Goals (ranked by priority):
+{goals as numbered list}
+
+Non-Negotiable Rules:
+{rules as bulleted list}
+
+Known Bad Habits & Triggers:
+{habits as bulleted list}
+
+This Week's Targets:
+{weekly_targets as bulleted list}
+
+=== TODAY'S STATE ===
+Energy Level: {energy}/10
+Mood Level: {mood}/10
+Today's Top Missions: {missions as numbered list}
+Additional Context: {notes or 'None provided'}
+
+=== DECISION REQUEST ===
+Category: {category}
+What: {context.what}
+Why: {context.why}
+When: {context.when}
+Urgency: {context.urgency}
+Alternatives Considered: {context.alternatives or 'None'}
+Estimated Impact: {context.estimated_impact}
+
+=== REQUIRED JSON OUTPUT FORMAT ===
+{"verdict":"approve|reject|delay","confidence":0-100,
+"reasoning":["...","..."],"risks":["..."],
+"better_option":"...","next_steps":["...","..."]}
+
+5.3 OpenRouter API Call Specification
+Parameter
+Value
+Endpoint
+POST https://openrouter.ai/api/v1/chat/completions
+Header: Authorization
+Bearer {OPENROUTER_API_KEY} — from .env, never hardcoded
+Header: Content-Type
+application/json
+model
+meta-llama/llama-3.3-70b-instruct:free
+messages
+Array: [{role: 'system', content: systemPrompt}, {role: 'user', content: userMessage}]
+temperature
+0.2 — Low temperature for consistent, rule-based reasoning (not creative)
+max_tokens
+800 — Sufficient for the JSON schema, prevents bloated responses
+
+temperature: Use 0.2, NOT the default 1.0. Higher temperatures cause the AI to be creative and inconsistent — exactly what we do NOT want for a doctrine-based decision engine.
+
+5.4 Response Validation (Laravel)
+After receiving the API response, Laravel must run the following checks before saving. If any check fails, return HTTP 422 to the frontend with error details:
+HTTP status from OpenRouter is 200. Any other status = OpenRouter error, log and return 503.
+response.choices[0].message.content is a non-empty string.
+Content can be parsed as valid JSON (json_decode returns non-null).
+JSON contains all required keys: verdict, confidence, reasoning, risks, better_option, next_steps.
+verdict is exactly one of: 'approve', 'reject', 'delay'.
+confidence is an integer between 0 and 100 inclusive.
+reasoning is an array with at least 1 item.
+risks is an array (can be empty).
+next_steps is an array with at least 1 item.
+
+
+6. Laravel API Endpoints
+
+All endpoints are prefixed with /api/v1/. All endpoints except /login and /register require Sanctum authentication (Authorization: Bearer {token} header from the Vue SPA).
+
+6.1 Authentication Endpoints
+Method
+Endpoint
+Auth
+Description
+POST
+/api/register
+No
+Register new user. Body: {name, email, password, password_confirmation}. Returns user object + token.
+POST
+/api/login
+No
+Login. Body: {email, password}. Returns user object + Sanctum token.
+POST
+/api/logout
+Yes
+Revoke current Sanctum token. No body required.
+GET
+/api/user
+Yes
+Return authenticated user object.
+
+6.2 Doctrine Endpoints
+Method
+Endpoint
+Auth
+Description
+GET
+/api/v1/doctrine
+Yes
+Fetch authenticated user's doctrine. Returns 404 with message if none exists yet.
+PUT
+/api/v1/doctrine
+Yes
+Create or update doctrine (updateOrCreate by user_id). Body: {goals_json, rules_json, habits_json, weekly_targets_json}.
+
+6.3 Daily Check-In Endpoints
+Method
+Endpoint
+Auth
+Description
+GET
+/api/v1/checkin/today
+Yes
+Returns today's check-in if it exists, or 404 if not yet submitted.
+POST
+/api/v1/checkin
+Yes
+Submit today's check-in. Returns 409 Conflict if one already exists today. Body: {energy, mood, missions_json, notes}.
+GET
+/api/v1/checkins
+Yes
+List all check-ins for the user (paginated). Query params: ?per_page=7&page=1
+
+6.4 Decision Engine Endpoints
+Method
+Endpoint
+Auth
+Description
+POST
+/api/v1/decisions
+Yes
+Submit a decision for AI evaluation. Requires today's check-in to exist. Body: {category, context_json}. Returns full decision record with ai_response_json.
+GET
+/api/v1/decisions
+Yes
+List all user's decisions (paginated). Supports ?category= filter.
+GET
+/api/v1/decisions/{id}
+Yes
+Get single decision by ID. Returns 403 if not owner.
+PATCH
+/api/v1/decisions/{id}/outcome
+Yes
+Update final_choice and outcome_notes after user has acted. Body: {final_choice, outcome_notes}.
+
+6.5 Discipline Log Endpoints
+Method
+Endpoint
+Auth
+Description
+POST
+/api/v1/discipline-log
+Yes
+Log a discipline event. Body: {decision_id (optional), log_type, reason (required for override/violation)}.
+GET
+/api/v1/discipline-log
+Yes
+Get user's discipline log (paginated, newest first).
+GET
+/api/v1/discipline-log/streak
+Yes
+Returns {current_streak, longest_streak, last_broken_date}.
+
+6.6 Weekly Review Endpoints
+Method
+Endpoint
+Auth
+Description
+POST
+/api/v1/weekly-review/generate
+Yes
+Trigger AI weekly review generation. No body required. Returns review object.
+GET
+/api/v1/weekly-reviews
+Yes
+List all past weekly reviews for user.
+GET
+/api/v1/weekly-reviews/{id}
+Yes
+Get a specific weekly review.
+
+
+7. Frontend — Vue.js SPA Specification
+
+7.1 Pages (Routes)
+Component File
+Route
+Description
+CommandCenter.vue
+/dashboard
+Main hub. Shows today's check-in status, streak, recent decisions, and quick-action buttons.
+DailyCheckin.vue
+/checkin
+Check-in form. Blocked if check-in already submitted today (shows today's data instead).
+AskDecision.vue
+/decision
+Decision submission form. Blocked if no check-in for today — redirects to /checkin.
+DecisionHistory.vue
+/decisions
+Paginated list of all past decisions with verdict badges and outcome status.
+DecisionDetail.vue
+/decisions/:id
+Full detail view of a single decision — verdict, reasoning, risks, outcome.
+WeeklyReview.vue
+/weekly-review
+Shows most recent weekly review + button to generate new one. Shows list of past reviews.
+DoctrineSettings.vue
+/settings/doctrine
+Full doctrine editor. Goals (sortable), rules, habits, weekly targets.
+LoginPage.vue
+/login
+Login form. Redirects to /dashboard if already authenticated.
+RegisterPage.vue
+/register
+Registration form. Auto-logs in after successful registration.
+
+7.2 Reusable Components
+Component File
+Description & Props
+VerdictCard.vue
+Displays AI verdict. Props: {verdict, confidence, reasoning, risks, better_option, next_steps}. Verdict color: approve=green, reject=red, delay=amber.
+ProgressCard.vue
+Shows a metric with progress bar. Props: {label, current, goal, unit}. Used on CommandCenter and WeeklyReview.
+MissionList.vue
+Ordered list of today's missions with checkbox completion. Props: {missions: string[]}. Emits: @mission-toggled.
+ViolationLog.vue
+Displays discipline log entries. Props: {logs: DisciplineLog[]}. Color codes by log_type.
+StreakBadge.vue
+Shows current streak count with fire icon and streak history. Props: {current, longest, last_broken}.
+DoctrineEmpty.vue
+Warning state shown when user has no doctrine. Contains CTA button to DoctrineSettings.vue.
+LoadingSpinner.vue
+Global loading indicator. Used during all API calls.
+
+7.3 Design System
+Design Element
+Specification
+Theme
+Dark mode only. No light mode toggle required in V1.
+Primary Background
+#1A1A2E (near-black navy)
+Card Background
+#16213E (dark navy)
+Accent Color
+#0F3460 (deep blue)
+Alert / CTA Color
+#E94560 (red-pink — used for 'reject' verdicts and warnings)
+Success Color
+#00B4D8 (teal — used for 'approve' verdicts)
+Warning Color
+#F9A825 (amber — used for 'delay' verdicts)
+Font
+Inter or system-ui. Clean, legible. No decorative fonts.
+Layout
+Card-based. No tables visible to users. Information is displayed in structured cards.
+Spacing
+Generous padding. Cards should breathe. No cramped layouts.
+
+7.4 State Management
+Use Pinia (not Vuex) for state management.
+Stores required: AuthStore (user, token), DoctrineStore (current doctrine), CheckinStore (today's checkin), DecisionStore (list + current).
+Sanctum token is stored in localStorage and sent as Bearer token in all authenticated requests.
+On app init, fetch /api/user. If 401, redirect to /login and clear localStorage.
+
+
+8. Security Requirements
+
+8.1 API Key Security
+OPENROUTER_API_KEY must be stored in Laravel's .env file ONLY.
+Never reference it in any frontend file, Vue component, or API response.
+Never commit .env to version control. Ensure .env is in .gitignore.
+In production, use environment variable injection (server config or secrets manager).
+
+8.2 Authentication & Authorization
+Use Laravel Sanctum for SPA authentication. Issue API tokens on login, revoke on logout.
+Every controller action must verify the authenticated user owns the resource being accessed (use Policy classes).
+Accessing another user's doctrine, decisions, or logs must return 403 Forbidden — not 404.
+
+8.3 Input Validation
+All API inputs must be validated with Laravel Form Requests (not inline in controllers).
+JSON fields (goals_json, etc.) must be validated as valid JSON arrays/objects at the Laravel layer.
+Energy and mood must be validated as integers between 1 and 10.
+Decision category must be validated as one of the 6 allowed ENUM values.
+
+8.4 Rate Limiting
+Apply rate limiting to POST /api/v1/decisions — maximum 10 requests per minute per user.
+Apply rate limiting to POST /api/login — maximum 5 attempts per minute per IP.
+Use Laravel's built-in throttle middleware for both.
+
+8.5 AI Response Security
+Validate all AI JSON responses before saving (see Section 5.4).
+Store the raw AI response in a separate raw_ai_response TEXT column for debugging — do NOT rely on the raw response for display.
+Never pass AI-generated text directly into SQL queries without parameterization.
+
+
+9. 30-Day Development Roadmap
+
+Week 1 — Foundation (Days 1–7)
+Day
+Task
+Acceptance Criteria
+1–2
+Laravel project setup, Sanctum config, MySQL connection
+Fresh Laravel install. /api/user returns 401 when unauthenticated.
+2–3
+Auth endpoints: register, login, logout
+Can register, login, receive token, and logout via Postman/Insomnia.
+3–4
+Database migrations: all 6 tables
+All tables created with correct columns, types, and FKs.
+4–5
+Doctrine CRUD API (GET + PUT)
+updateOrCreate works. One doctrine per user enforced.
+5–6
+Daily Check-In API (GET today + POST)
+One check-in per day enforced. 409 on duplicate.
+6–7
+Vue.js SPA scaffold + Pinia stores + routing
+All routes defined. Auth guard redirects to /login if not authenticated.
+
+Week 2 — Decision Engine (Days 8–14)
+Day
+Task
+Acceptance Criteria
+8–9
+DoctrineSettings.vue — full doctrine editor UI
+User can set goals (ranked), rules, habits, weekly targets. Saves to API.
+9–10
+DailyCheckin.vue — check-in form
+Form submits correctly. Shows today's data if already checked in.
+10–11
+OpenRouter integration in Laravel (prompt builder)
+Laravel can build full prompt from doctrine + checkin + context and call API.
+11–12
+AI response validation + decisions table save
+Invalid AI responses are rejected. Valid responses stored correctly.
+12–13
+AskDecision.vue — decision form + VerdictCard.vue
+User can submit decision and see structured verdict in VerdictCard.
+13–14
+Decision outcome update (PATCH endpoint + UI)
+User can log final_choice and outcome_notes from DecisionDetail.vue.
+
+Week 3 — Analytics & Review (Days 15–21)
+Day
+Task
+Acceptance Criteria
+15–16
+Discipline log API + UI (ViolationLog.vue)
+Can log complied/override/violation. Displayed on CommandCenter.
+16–17
+Streak calculation endpoint + StreakBadge.vue
+Streak correctly calculated from log data. Displayed on dashboard.
+17–19
+Weekly Review: AI prompt + generation endpoint
+Weekly review generates correctly, stores in DB, returns structured JSON.
+19–20
+WeeklyReview.vue — display + history
+User can generate review and view past reviews.
+20–21
+CommandCenter.vue — full dashboard assembly
+Dashboard shows: streak, check-in status, recent decisions, missions.
+
+Week 4 — Polish & Integration (Days 22–30)
+Day
+Task
+Acceptance Criteria
+22–24
+Telegram bot integration (optional but listed in blueprint)
+Bot can receive decision requests via Telegram and return verdict.
+24–26
+Full UI polish — design system implementation
+Dark theme, card layout, verdict colors all consistent across all pages.
+26–27
+Rate limiting + security hardening
+Throttle middleware applied. All policy checks confirmed.
+27–28
+Edge case handling (no doctrine, no checkin, AI failure)
+All error states handled gracefully with user-friendly messages.
+28–30
+End-to-end testing + bug fixes
+Full flow works: register → doctrine → checkin → decision → verdict → outcome log → weekly review.
+
+
+10. Error Handling & Edge Cases
+
+Scenario
+Backend Behavior
+Frontend Behavior
+No doctrine exists for user
+GET /doctrine returns 404 with {message: 'No doctrine found'}
+Show DoctrineEmpty.vue component with CTA
+No check-in today when submitting decision
+POST /decisions returns 422 with {error: 'daily_checkin_required'}
+Redirect to /checkin with banner: 'Check in first'
+Duplicate check-in (same day)
+POST /checkin returns 409 Conflict
+Show today's check-in read-only, no form
+OpenRouter API returns non-200
+Log error, return 503 to frontend
+Show: 'Decision engine unavailable. Try again shortly.'
+AI returns invalid JSON
+Log raw response, return 422 with {error: 'ai_response_invalid'}
+Show: 'AI returned an invalid response. Please retry.'
+AI returns wrong verdict value
+Treat as invalid JSON error (same as above)
+Same as above
+Rate limit exceeded on decisions
+Return 429 Too Many Requests
+Show: 'Too many decisions. Please wait before submitting another.'
+User accesses another user's resource
+Return 403 Forbidden
+Redirect to dashboard with generic error
+
+
+11. Future Expansion (V2 Roadmap)
+
+The following features are planned but NOT included in the 30-day V1 scope. Developers should architect V1 with these in mind to avoid costly refactoring:
+
+Feature
+Architecture Consideration for V1
+Multi-user SaaS
+All DB tables already have user_id. Auth is per-user. No shared data. V1 is already SaaS-ready at the data layer.
+Subscription model
+Add a subscriptions table and plan column to users. Middleware for plan-gating routes. Use Stripe or Paystack.
+Behavioral scoring engine
+discipline_logs table is already designed to support this. Add a score computation job.
+AI adaptive rule weighting
+Add a weight float column to rules in doctrine. AI prompt passes weights. Requires doctrine schema update.
+Emotional bias detection
+Weekly review already captures mood patterns. Extend with a bias_flags JSON column on weekly_reviews.
+Mobile app version
+V1 API is already RESTful and token-authenticated. Mobile app simply consumes the same API.
+Telegram bot
+Already in Week 4 roadmap. Use Laravel Telegram SDK. Bot sends decisions to POST /decisions endpoint.
+
+
+End of Developer Documentation
+You OS — Build with discipline. Ship with precision.
