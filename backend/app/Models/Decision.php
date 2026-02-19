@@ -18,6 +18,7 @@ class Decision extends Model
         'category',
         'context_json',
         'ai_response_json',
+        'raw_ai_response',
         'final_choice',
         'outcome_notes',
     ];
