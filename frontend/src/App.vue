@@ -14,7 +14,7 @@ const isAuthLayout = computed(() => route.meta.layout === 'auth')
       v-if="isAuthLayout"
       class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 md:px-8"
     >
-      <div class="stoic-panel relative z-10 w-full max-w-md rounded-3xl p-8 md:p-10">
+      <div class="stoic-panel auth-card-enter relative z-10 w-full max-w-md rounded-3xl p-8 md:p-10">
         <RouterView v-slot="{ Component }">
           <Transition name="route-fade" mode="out-in">
             <component :is="Component" />

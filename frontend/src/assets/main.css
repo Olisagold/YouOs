@@ -12,9 +12,13 @@
     --text: #e6eefb;
     --muted: #98a6bb;
     --accent: #7f95b3;
+    --accent-strong: #93a9c8;
+    --accent-deep: #60758f;
+    --accent-gold: #b5a279;
     --success: #7ea593;
     --warning: #b59e73;
     --danger: #bc7d7d;
+    --focus-ring: rgb(127 149 179 / 0.45);
     font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
@@ -31,6 +35,19 @@
       var(--background);
     color: var(--text);
     @apply antialiased;
+  }
+
+  button,
+  a,
+  input,
+  textarea {
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      transform 150ms ease,
+      opacity 150ms ease;
   }
 
   * {
@@ -54,7 +71,23 @@
   }
 
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(127,149,179,0.65)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)];
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)];
+    --tw-ring-color: var(--focus-ring);
+  }
+
+  .auth-card-enter {
+    animation: auth-card-enter 200ms ease-out both;
+  }
+}
+
+@keyframes auth-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

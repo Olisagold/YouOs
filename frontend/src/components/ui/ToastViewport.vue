@@ -13,32 +13,46 @@ const iconByType = {
 }
 
 const styleByType = {
-  success: 'border-[rgb(126,165,147,0.45)] bg-[rgb(126,165,147,0.16)] text-[rgb(198,225,212)]',
-  warning: 'border-[rgb(181,158,115,0.45)] bg-[rgb(181,158,115,0.16)] text-[rgb(236,220,190)]',
-  danger: 'border-[rgb(188,125,125,0.45)] bg-[rgb(188,125,125,0.16)] text-[rgb(240,208,208)]',
-  info: 'border-[rgb(127,149,179,0.45)] bg-[rgb(127,149,179,0.16)] text-[rgb(210,223,241)]',
+  success: 'border-[rgb(126,165,147,0.35)]',
+  warning: 'border-[rgb(181,158,115,0.35)]',
+  danger: 'border-[rgb(188,125,125,0.35)]',
+  info: 'border-[rgb(127,149,179,0.35)]',
+}
+
+const iconStyleByType = {
+  success: 'bg-[rgb(126,165,147,0.22)] text-[rgb(177,211,193)]',
+  warning: 'bg-[rgb(181,158,115,0.22)] text-[rgb(224,207,170)]',
+  danger: 'bg-[rgb(188,125,125,0.22)] text-[rgb(230,194,194)]',
+  info: 'bg-[rgb(127,149,179,0.22)] text-[rgb(196,212,236)]',
 }
 
 const toasts = computed(() => toastStore.toasts)
 
 const iconFor = (type) => iconByType[type] ?? Info
 const styleFor = (type) => styleByType[type] ?? styleByType.info
+const iconStyleFor = (type) => iconStyleByType[type] ?? iconStyleByType.info
 </script>
 
 <template>
-  <div class="pointer-events-none fixed right-4 top-4 z-[80] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-3">
+  <div
+    class="pointer-events-none fixed right-4 top-4 z-[80] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-3"
+    aria-live="polite"
+    aria-atomic="true"
+  >
     <TransitionGroup name="toast-slide" tag="div" class="flex flex-col gap-3">
       <article
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto rounded-2xl border p-4 shadow-soft backdrop-blur-sm"
+        class="stoic-panel pointer-events-auto rounded-2xl border bg-[rgb(16,24,36,0.94)] p-4 text-[var(--text)] shadow-soft backdrop-blur-sm"
         :class="styleFor(toast.type)"
       >
         <div class="flex items-start gap-3">
-          <component :is="iconFor(toast.type)" class="mt-0.5 h-4 w-4 shrink-0" />
+          <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" :class="iconStyleFor(toast.type)">
+            <component :is="iconFor(toast.type)" class="h-4 w-4" />
+          </span>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold">{{ toast.title }}</p>
-            <p v-if="toast.message" class="mt-1 text-sm opacity-90">{{ toast.message }}</p>
+            <p v-if="toast.message" class="mt-1 text-sm text-[var(--muted)]">{{ toast.message }}</p>
           </div>
           <button
             class="focus-ring rounded-lg p-1 text-current/80 transition hover:bg-black/10 hover:text-current"
@@ -62,6 +76,6 @@ const styleFor = (type) => styleByType[type] ?? styleByType.info
 .toast-slide-enter-from,
 .toast-slide-leave-to {
   opacity: 0;
-  transform: translateY(-8px) translateX(8px);
+  transform: translateY(-12px) translateX(10px);
 }
 </style>
