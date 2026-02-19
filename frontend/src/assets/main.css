@@ -1,35 +1,85 @@
-@import './base.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
-
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
+@layer base {
+  :root {
+    color-scheme: dark;
+    --background: #080d14;
+    --surface: #101824;
+    --surface-elevated: #162233;
+    --border: #253245;
+    --text: #e6eefb;
+    --muted: #98a6bb;
+    --accent: #7f95b3;
+    --success: #7ea593;
+    --warning: #b59e73;
+    --danger: #bc7d7d;
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
+  html,
+  body,
   #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+    min-height: 100%;
+  }
+
+  body {
+    background:
+      radial-gradient(1200px circle at 5% -10%, rgb(127 149 179 / 0.13), transparent 55%),
+      radial-gradient(1000px circle at 95% 0%, rgb(181 158 115 / 0.1), transparent 45%),
+      var(--background);
+    color: var(--text);
+    @apply antialiased;
+  }
+
+  * {
+    scrollbar-color: rgb(127 149 179 / 0.45) transparent;
+  }
+
+  *::selection {
+    background: rgb(127 149 179 / 0.35);
+    color: var(--text);
+  }
+}
+
+@layer components {
+  .stoic-panel {
+    background: rgb(16 24 36 / 0.85);
+    border: 1px solid rgb(37 50 69 / 0.8);
+    box-shadow:
+      0 20px 40px rgb(5 9 15 / 0.35),
+      inset 0 1px 0 rgb(230 238 251 / 0.03);
+    backdrop-filter: blur(12px);
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(127,149,179,0.65)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)];
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: var(--muted);
+  }
+
+  .text-accent {
+    color: var(--accent);
+  }
+
+  .border-default {
+    border-color: var(--border);
+  }
+
+  .bg-surface {
+    background-color: var(--surface);
+  }
+
+  .bg-elevated {
+    background-color: var(--surface-elevated);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 16px 34px rgb(6 10 16 / 0.3);
   }
 }

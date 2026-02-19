@@ -1,38 +1,67 @@
-# frontend
+# Stoic OS Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Vue 3 + Vue Router + Pinia frontend for You OS, styled with Tailwind CSS.
 
-## Recommended IDE Setup
+## Run locally
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+1. Install dependencies:
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+2. Optional: create a `.env` file in `/frontend`:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8081
+```
+
+If omitted, the app defaults to `http://127.0.0.1:8081`.
+
+3. Start development server:
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+4. Build production bundle:
 
 ```sh
 npm run build
+```
+
+## Expected backend endpoints
+
+The frontend currently expects these API routes:
+
+- `POST /api/register`
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/user`
+- `POST /api/v1/weekly-review/generate`
+- `GET /api/v1/weekly-reviews`
+- `GET /api/v1/weekly-reviews/{id}`
+- `GET /api/v1/doctrine`
+- `PUT /api/v1/doctrine`
+- `POST /api/v1/checkin`
+- `GET /api/v1/checkin/today`
+- `GET /api/v1/checkins`
+- `POST /api/v1/decisions`
+- `GET /api/v1/decisions`
+- `GET /api/v1/decisions/{id}`
+- `PATCH /api/v1/decisions/{id}/outcome`
+- `POST /api/v1/discipline-log`
+- `GET /api/v1/discipline-log`
+- `GET /api/v1/discipline-log/streak`
+
+## Error normalization
+
+Axios response interception normalizes API errors to:
+
+```json
+{
+  "error": "error_code",
+  "message": "Human readable message",
+  "details": {}
+}
 ```
