@@ -11,6 +11,8 @@ class Decision extends Model
 {
     use HasFactory;
 
+    public const CATEGORIES = ['financial', 'health', 'work', 'social', 'mindset', 'other'];
+
     protected $fillable = [
         'user_id',
         'category',

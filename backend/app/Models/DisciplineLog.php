@@ -10,6 +10,8 @@ class DisciplineLog extends Model
 {
     use HasFactory;
 
+    public const LOG_TYPES = ['complied', 'override', 'violation', 'skipped'];
+
     protected $fillable = [
         'user_id',
         'decision_id',
