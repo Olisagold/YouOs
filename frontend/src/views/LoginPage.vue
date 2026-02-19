@@ -65,6 +65,10 @@ const validate = () => {
 }
 
 const submit = async () => {
+  if (isSubmitting.value) {
+    return
+  }
+
   if (!validate()) {
     return
   }
@@ -89,14 +93,16 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-md space-y-6">
-    <div class="space-y-2 text-center">
-      <p class="text-xs uppercase tracking-[0.16em] text-accent">Stoic OS</p>
-      <h1 class="text-3xl font-semibold text-[var(--text)]">Welcome back</h1>
-      <p class="text-sm text-muted">Sign in to continue your disciplined command center.</p>
+  <div class="mx-auto w-full max-w-md space-y-8">
+    <div class="space-y-3 text-center">
+      <p class="text-[11px] uppercase tracking-[0.24em] text-accent">STOIC OS</p>
+      <h1 class="text-3xl font-bold text-[var(--text)]">Welcome back</h1>
+      <p class="text-sm leading-relaxed text-muted">
+        Sign in to continue your disciplined command center.
+      </p>
     </div>
 
-    <form class="space-y-4" @submit.prevent="submit">
+    <form class="space-y-5" @submit.prevent="submit">
       <BaseInput
         v-model="form.email"
         label="Email"
@@ -121,9 +127,9 @@ const submit = async () => {
       </BaseButton>
     </form>
 
-    <p class="text-center text-sm text-muted">
+    <p class="pt-1 text-center text-sm text-muted">
       New here?
-      <RouterLink class="ml-1 text-accent transition hover:text-[rgb(176,195,222)]" to="/register">
+      <RouterLink class="ml-1 text-accent hover:text-[var(--accent-strong)]" to="/register">
         Create an account
       </RouterLink>
     </p>

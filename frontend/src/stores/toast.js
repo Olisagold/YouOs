@@ -31,7 +31,7 @@ export const useToastStore = defineStore('toast', {
       this.push({ type: 'success', title, message })
     },
     error(message, title = 'Request failed') {
-      this.push({ type: 'danger', title, message, duration: 5000 })
+      this.push({ type: 'danger', title, message, duration: 4000 })
     },
     warning(message, title = 'Warning') {
       this.push({ type: 'warning', title, message })
