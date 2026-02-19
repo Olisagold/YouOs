@@ -1,0 +1,24 @@
+﻿YOU OS – Stoic Disciplined Coach
+Full Technical & Product Blueprint
+Tech Stack: Laravel + Vue.js + MySQL + OpenRouter (Meta Llama 3.3 70B Instruct Free)
+
+1. Project Vision
+You OS is a personal decision engine and discipline operating system designed to guide the user toward daily and weekly goal achievement through structured reasoning powered by an LLM.Core Identity:- Stoic disciplined coach- Rule-first reasoning- Objective over emotion- Structured verdicts, not chat responses
+2. Core System Architecture
+Frontend: Vue.js (SPA dashboard)Backend: Laravel (API-based architecture)Database: MySQLLLM Provider: OpenRouter (meta-llama/llama-3.3-70b-instruct:free)Flow:User -> Vue UI -> Laravel API -> MySQL (fetch doctrine + checkin)Laravel -> OpenRouter API -> Structured JSON responseLaravel -> Store decision + response -> Return to frontend
+3. Core Modules
+A. Doctrine Module (Knowledge Base)- Ranked goals- Non-negotiable rules- Weekly targets- Bad habits & triggers- Risk toleranceB. Daily Check-In Module- Energy (1–10)- Mood (1–10)- Top 3 missions- Time availabilityC. Decision Engine Module- Category-based structured decision form- Context input- LLM verdict (JSON structured)D. Discipline Log- Logs user compliance- Logs overrides & violations- Tracks streaksE. Weekly Review Engine- AI summarization of week- Pattern detection- Improvement directive
+4. Database Schema (MySQL)
+Tables:users- id- name- email- passworddoctrines- id- user_id- goals_json- rules_json- habits_json- weekly_targets_jsondaily_checkins- id- user_id- energy- mood- missions_json- notes- created_atdecisions- id- user_id- category- context_json- ai_response_json- final_choice- outcome_notes- created_at
+5. LLM Prompt Structure
+System Prompt:"You are a stoic disciplined decision coach. You must follow the user's doctrine strictly.Return only structured JSON in the required schema."Input Structure:- USER DOCTRINE (goals, rules, habits)- TODAY STATE (energy, mood, missions)- DECISION CONTEXT- REQUIRED OUTPUT FORMAT (JSON schema)Output Schema:{  "verdict": "approve | reject | delay",  "confidence": 0-100,  "reasoning": ["bullet 1", "bullet 2"],  "risks": ["risk 1", "risk 2"],  "better_option": "text",  "next_steps": ["step1", "step2"]}
+6. OpenRouter Integration (Laravel)
+Endpoint: https://openrouter.ai/api/v1/chat/completionsHeaders:Authorization: Bearer YOUR_API_KEYContent-Type: application/jsonModel:meta-llama/llama-3.3-70b-instruct:freeLaravel Example (HTTP Client):$response = Http::withHeaders([    'Authorization' => 'Bearer ' . env('OPENROUTER_API_KEY'),])->post('https://openrouter.ai/api/v1/chat/completions', [    'model' => 'meta-llama/llama-3.3-70b-instruct:free',    'messages' => $messages,]);$json = $response->json();
+7. Vue.js UI Structure
+Pages:- CommandCenter.vue- DailyCheckin.vue- AskDecision.vue- WeeklyReview.vue- DoctrineSettings.vueComponent Ideas:- ProgressCard.vue- VerdictCard.vue- MissionList.vue- ViolationLog.vueDesign Style:- Dark theme- Minimal card layout- Calm accent colors
+8. Development Roadmap (30 Days)
+Week 1:- Laravel auth setup- Database migrations- Doctrine CRUD- Daily check-in pageWeek 2:- Decision form- OpenRouter integration- Store AI responsesWeek 3:- Discipline logging- Weekly review summarizer- Charts & analyticsWeek 4:- Telegram bot integration- Polish UI- Testing & edge case handling
+9. Security & Best Practices
+- Never expose OpenRouter key to frontend- Validate JSON responses before saving- Rate-limit decision endpoint- Add user authentication & session control- Encrypt sensitive doctrine fields if needed
+10. Future Expansion
+- Multi-user SaaS version- Subscription model- Behavioral scoring engine- AI adaptive rule weighting- Emotional bias detection- Mobile app version
