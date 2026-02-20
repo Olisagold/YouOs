@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import api from '@/lib/api'
 
-const TOKEN_STORAGE_KEY = 'stoic_os_token'
+const TOKEN_STORAGE_KEY = 'youos_token'
+let initializeRequest = null
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? '',
+    token: '',
     user: null,
     initializing: false,
     initialized: false,
@@ -36,21 +37,37 @@ export const useAuthStore = defineStore('auth', {
       return response.data
     },
     async initialize() {
-      if (this.initialized || this.initializing) {
+      if (this.initialized) {
+        return
+      }
+
+      if (this.initializing && initializeRequest) {
+        await initializeRequest
         return
       }
 
       this.initializing = true
+      initializeRequest = (async () => {
+        const persistedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? ''
+        this.token = persistedToken
+        this.user = null
+
+        try {
+          if (this.token) {
+            await this.fetchUser()
+          }
+        } catch (_error) {
+          this.clearAuth()
+        } finally {
+          this.initialized = true
+        }
+      })()
 
       try {
-        if (this.token) {
-          await this.fetchUser()
-        }
-      } catch (_error) {
-        this.clearAuth()
+        await initializeRequest
       } finally {
-        this.initialized = true
         this.initializing = false
+        initializeRequest = null
       }
     },
     async login(payload) {

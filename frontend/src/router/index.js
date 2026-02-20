@@ -93,16 +93,16 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore(pinia)
 
-  if (!authStore.initialized && !authStore.initializing) {
+  if ((to.meta.requiresAuth || to.meta.guestOnly) && !authStore.initialized) {
     await authStore.initialize()
   }
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return {
-      path: '/login',
-      query: to.fullPath !== '/dashboard' ? { redirect: to.fullPath } : {},
-    }
-  }
+  // if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  //   return {
+  //     path: '/login',
+  //     query: to.fullPath !== '/dashboard' ? { redirect: to.fullPath } : {},
+  //   }
+  // }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return { path: '/dashboard' }

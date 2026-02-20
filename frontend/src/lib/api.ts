@@ -1,6 +1,8 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
+const TOKEN_STORAGE_KEY = 'youos_token'
+
 export type ApiErrorShape = {
   error: string
   message: string
@@ -11,6 +13,7 @@ export type ApiErrorShape = {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8081',
   timeout: 30000,
+  withCredentials: false,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -20,27 +23,41 @@ const api = axios.create({
 const normalizeApiError = (error: AxiosError): ApiErrorShape => {
   const responseData = error.response?.data as
     | {
-        error?: string
+        error?: string | { code?: string; message?: string; details?: unknown }
         message?: string
         details?: unknown
         errors?: unknown
       }
     | undefined
 
+  const rawError = responseData?.error
+  const nestedError = rawError && typeof rawError === 'object' ? rawError : null
+
   return {
-    error: responseData?.error ?? 'request_failed',
-    message: responseData?.message ?? error.message ?? 'The request failed.',
-    details: responseData?.details ?? responseData?.errors,
+    error:
+      (typeof rawError === 'string' ? rawError : nestedError?.code) ??
+      'request_failed',
+    message:
+      responseData?.message ??
+      nestedError?.message ??
+      error.message ??
+      'The request failed.',
+    details: responseData?.details ?? nestedError?.details ?? responseData?.errors,
     status: error.response?.status,
   }
 }
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const authStore = useAuthStore()
-  const token = authStore.token
+  const token = authStore.token || window.localStorage.getItem(TOKEN_STORAGE_KEY)
+
+  config.withCredentials = false
+  config.headers.Accept = 'application/json'
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else {
+    delete config.headers.Authorization
   }
 
   return config

@@ -34,6 +34,18 @@ const props = defineProps({
     type: String,
     default: 'off',
   },
+  min: {
+    type: [String, Number],
+    default: undefined,
+  },
+  max: {
+    type: [String, Number],
+    default: undefined,
+  },
+  step: {
+    type: [String, Number],
+    default: undefined,
+  },
   required: {
     type: Boolean,
     default: false,
@@ -73,6 +85,9 @@ const inputClass = computed(() => {
       :type="type"
       :autocomplete="autocomplete"
       :placeholder="placeholder"
+      :min="min"
+      :max="max"
+      :step="step"
       :required="required"
       :disabled="disabled"
       :aria-invalid="error ? 'true' : 'false'"
