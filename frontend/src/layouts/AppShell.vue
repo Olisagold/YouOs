@@ -23,12 +23,15 @@ const route = useRoute()
 const router = useRouter()
 const mobileMenuOpen = ref(false)
 
-const navItems = [
+const primaryNavItems = [
   { to: '/dashboard', label: 'Command Center', icon: Gauge },
   { to: '/checkin', label: 'Daily Check-In', icon: ClipboardCheck },
   { to: '/decision', label: 'Ask Decision', icon: Scale },
   { to: '/decisions', label: 'Decision History', icon: History },
   { to: '/weekly-review', label: 'Weekly Review', icon: CalendarRange },
+]
+
+const settingsNavItems = [
   { to: '/settings/doctrine', label: 'Doctrine Settings', icon: Settings2 },
 ]
 
@@ -36,6 +39,14 @@ const pageTitle = computed(() => route.meta.title ?? 'Stoic OS')
 
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false
+}
+
+const isActive = (targetPath) => {
+  if (targetPath === '/settings/doctrine') {
+    return route.path.startsWith('/settings')
+  }
+
+  return route.path === targetPath
 }
 
 const handleLogout = async () => {
@@ -68,22 +79,44 @@ const handleLogout = async () => {
           </button>
         </div>
 
-        <nav class="space-y-2">
-          <RouterLink
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="focus-ring flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200"
-            :class="
-              route.path === item.to
-                ? 'border-[rgb(127,149,179,0.5)] bg-[rgb(127,149,179,0.16)] text-[var(--text)]'
-                : 'border-transparent text-muted hover:border-default hover:bg-white/5 hover:text-[var(--text)]'
-            "
-            @click="closeMobileMenu"
-          >
-            <component :is="item.icon" class="h-4 w-4" />
-            <span>{{ item.label }}</span>
-          </RouterLink>
+        <nav class="space-y-5">
+          <div class="space-y-2">
+            <p class="px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Navigation</p>
+            <RouterLink
+              v-for="item in primaryNavItems"
+              :key="item.to"
+              :to="item.to"
+              class="focus-ring flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200"
+              :class="
+                isActive(item.to)
+                  ? 'border-[rgb(127,149,179,0.5)] bg-[rgb(127,149,179,0.16)] text-[var(--text)]'
+                  : 'border-transparent text-muted hover:border-default hover:bg-white/5 hover:text-[var(--text)]'
+              "
+              @click="closeMobileMenu"
+            >
+              <component :is="item.icon" class="h-4 w-4" />
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </div>
+
+          <div class="space-y-2">
+            <p class="px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Settings</p>
+            <RouterLink
+              v-for="item in settingsNavItems"
+              :key="item.to"
+              :to="item.to"
+              class="focus-ring flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200"
+              :class="
+                isActive(item.to)
+                  ? 'border-[rgb(127,149,179,0.5)] bg-[rgb(127,149,179,0.16)] text-[var(--text)]'
+                  : 'border-transparent text-muted hover:border-default hover:bg-white/5 hover:text-[var(--text)]'
+              "
+              @click="closeMobileMenu"
+            >
+              <component :is="item.icon" class="h-4 w-4" />
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </div>
         </nav>
 
         <div class="mt-auto rounded-2xl border border-default bg-white/5 p-4">
@@ -115,7 +148,7 @@ const handleLogout = async () => {
             <BaseBadge variant="accent">Status: stable</BaseBadge>
             <BaseButton size="sm" variant="ghost" @click="handleLogout">
               <LogOut class="h-4 w-4" />
-              Logout
+              Sign out
             </BaseButton>
           </div>
         </div>

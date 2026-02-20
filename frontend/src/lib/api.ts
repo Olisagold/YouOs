@@ -20,17 +20,26 @@ const api = axios.create({
 const normalizeApiError = (error: AxiosError): ApiErrorShape => {
   const responseData = error.response?.data as
     | {
-        error?: string
+        error?: string | { code?: string; message?: string; details?: unknown }
         message?: string
         details?: unknown
         errors?: unknown
       }
     | undefined
 
+  const rawError = responseData?.error
+  const nestedError = rawError && typeof rawError === 'object' ? rawError : null
+
   return {
-    error: responseData?.error ?? 'request_failed',
-    message: responseData?.message ?? error.message ?? 'The request failed.',
-    details: responseData?.details ?? responseData?.errors,
+    error:
+      (typeof rawError === 'string' ? rawError : nestedError?.code) ??
+      'request_failed',
+    message:
+      responseData?.message ??
+      nestedError?.message ??
+      error.message ??
+      'The request failed.',
+    details: responseData?.details ?? nestedError?.details ?? responseData?.errors,
     status: error.response?.status,
   }
 }
