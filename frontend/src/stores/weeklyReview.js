@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import weeklyReviewApi from '@/api/weeklyReviewApi'
+import waitForAuthInitialization from '@/lib/waitForAuthInitialization'
 
 const LIST_TTL_MS = 60_000
 
@@ -15,6 +16,8 @@ export const useWeeklyReviewStore = defineStore('weeklyReview', {
   }),
   actions: {
     async list(options = {}) {
+      await waitForAuthInitialization()
+
       const force = options.force === true
       const cacheFresh = Date.now() - this.lastListFetchAt < LIST_TTL_MS
 
@@ -42,6 +45,8 @@ export const useWeeklyReviewStore = defineStore('weeklyReview', {
     },
 
     async generate() {
+      await waitForAuthInitialization()
+
       if (this.isGenerating) {
         return this.latestReview
       }

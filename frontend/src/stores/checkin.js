@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import checkinApi from '@/api/checkinApi'
+import waitForAuthInitialization from '@/lib/waitForAuthInitialization'
 
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
@@ -13,6 +14,8 @@ export const useCheckinStore = defineStore('checkin', {
   }),
   actions: {
     async loadToday(options = {}) {
+      await waitForAuthInitialization()
+
       const force = options.force === true
       const currentKey = todayKey()
 
@@ -47,6 +50,8 @@ export const useCheckinStore = defineStore('checkin', {
     },
 
     async create(payload) {
+      await waitForAuthInitialization()
+
       if (this.isCreating) {
         return this.todayCheckin
       }

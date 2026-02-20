@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import decisionsApi from '@/api/decisionsApi'
+import waitForAuthInitialization from '@/lib/waitForAuthInitialization'
 
 const LIST_TTL_MS = 60_000
 
@@ -16,6 +17,8 @@ export const useDecisionStore = defineStore('decision', {
   }),
   actions: {
     async createDecision(payload) {
+      await waitForAuthInitialization()
+
       if (this.isCreating) {
         return null
       }
@@ -39,6 +42,8 @@ export const useDecisionStore = defineStore('decision', {
     },
 
     async listDecisions(options = {}) {
+      await waitForAuthInitialization()
+
       const force = options.force === true
       const category = options.category ?? null
       const cacheFresh = Date.now() - this.lastListFetchAt < LIST_TTL_MS

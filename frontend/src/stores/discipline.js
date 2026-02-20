@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import disciplineApi from '@/api/disciplineApi'
+import waitForAuthInitialization from '@/lib/waitForAuthInitialization'
 
 const STREAK_TTL_MS = 60_000
 
@@ -12,6 +13,8 @@ export const useDisciplineStore = defineStore('discipline', {
   }),
   actions: {
     async loadStreak(options = {}) {
+      await waitForAuthInitialization()
+
       const force = options.force === true
       const cacheFresh = Date.now() - this.lastFetchAt < STREAK_TTL_MS
 

@@ -1,6 +1,8 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
+const TOKEN_STORAGE_KEY = 'youos_token'
+
 export type ApiErrorShape = {
   error: string
   message: string
@@ -11,6 +13,7 @@ export type ApiErrorShape = {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8081',
   timeout: 30000,
+  withCredentials: false,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -46,10 +49,15 @@ const normalizeApiError = (error: AxiosError): ApiErrorShape => {
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const authStore = useAuthStore()
-  const token = authStore.token
+  const token = authStore.token || window.localStorage.getItem(TOKEN_STORAGE_KEY)
+
+  config.withCredentials = false
+  config.headers.Accept = 'application/json'
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else {
+    delete config.headers.Authorization
   }
 
   return config

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import doctrineApi from '@/api/doctrineApi'
+import waitForAuthInitialization from '@/lib/waitForAuthInitialization'
 
 export const useDoctrineStore = defineStore('doctrine', {
   state: () => ({
@@ -10,6 +11,8 @@ export const useDoctrineStore = defineStore('doctrine', {
   }),
   actions: {
     async load(options = {}) {
+      await waitForAuthInitialization()
+
       const force = options.force === true
 
       if (this.isLoading) {
@@ -41,6 +44,8 @@ export const useDoctrineStore = defineStore('doctrine', {
     },
 
     async save(payload) {
+      await waitForAuthInitialization()
+
       this.isSaving = true
 
       try {
