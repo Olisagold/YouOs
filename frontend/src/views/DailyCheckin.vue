@@ -8,6 +8,7 @@ import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSpinner from '@/components/ui/BaseSpinner.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
+import { isSignInRequiredError } from '@/lib/authErrors'
 import { useCheckinStore } from '@/stores/checkin'
 import { useToastStore } from '@/stores/toast'
 
@@ -29,6 +30,7 @@ const errors = reactive({
 
 const isSubmitting = ref(false)
 const hasLoaded = ref(false)
+const signInRequired = ref(false)
 
 const todayCheckin = computed(() => checkinStore.todayCheckin)
 const isCompleteForToday = computed(() => Boolean(todayCheckin.value))
@@ -78,8 +80,14 @@ const removeMission = (index) => {
 
 const loadToday = async () => {
   try {
+    signInRequired.value = false
     await checkinStore.loadToday()
   } catch (error) {
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      return
+    }
+
     toastStore.error(error.message ?? 'Unable to load today check-in.')
   } finally {
     hasLoaded.value = true
@@ -99,6 +107,7 @@ const submit = async () => {
   isSubmitting.value = true
 
   try {
+    signInRequired.value = false
     await checkinStore.create({
       energy: Number(form.energy),
       mood: Number(form.mood),
@@ -109,6 +118,11 @@ const submit = async () => {
     toastStore.success('Daily check-in completed.')
     router.push('/dashboard')
   } catch (error) {
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      return
+    }
+
     if (error?.status === 409 || error?.error === 'daily_checkin_exists') {
       await checkinStore.loadToday({ force: true })
       toastStore.info('Today check-in already exists. Showing completed summary.')
@@ -126,7 +140,17 @@ onMounted(loadToday)
 
 <template>
   <div class="space-y-6">
-    <BaseCard elevated title="Daily Check-In" subtitle="Capture your current state before making decisions.">
+    <BaseCard v-if="signInRequired" elevated>
+      <div class="space-y-4 text-center">
+        <p class="text-lg font-semibold text-[var(--text)]">Sign in required</p>
+        <p class="text-sm text-muted">You need an active session to load or submit daily check-ins.</p>
+        <div class="pt-2">
+          <BaseButton type="button" @click="router.push('/login')">Go to login</BaseButton>
+        </div>
+      </div>
+    </BaseCard>
+
+    <BaseCard v-else elevated title="Daily Check-In" subtitle="Capture your current state before making decisions.">
       <div v-if="!hasLoaded || checkinStore.isLoading" class="flex items-center justify-center py-16 text-muted">
         <BaseSpinner size="lg" />
         <span class="ml-3 text-sm">Loading today check-in...</span>

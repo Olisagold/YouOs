@@ -1,21 +1,26 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DailyCheckinController;
 use App\Http\Controllers\Api\V1\DecisionController;
 use App\Http\Controllers\Api\V1\DisciplineLogController;
 use App\Http\Controllers\Api\V1\DoctrineController;
+use App\Http\Controllers\Api\V1\TelegramWebhookController;
 use App\Http\Controllers\Api\V1\WeeklyReviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/v1/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
 
     Route::prefix('v1')->group(function (): void {
+        Route::post('/chat', [ChatController::class, 'store'])->middleware('throttle:chat');
+
         Route::get('/doctrine', [DoctrineController::class, 'show']);
         Route::put('/doctrine', [DoctrineController::class, 'upsert']);
 

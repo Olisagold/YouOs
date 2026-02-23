@@ -1,37 +1,40 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
-import BaseSpinner from '@/components/ui/BaseSpinner.vue'
-import { useCheckinStore } from '@/stores/checkin'
+import { isSignInRequiredError } from '@/lib/authErrors'
+import { useCommandCenterStore } from '@/stores/commandCenter'
 import { useDecisionStore } from '@/stores/decision'
-import { useDisciplineStore } from '@/stores/discipline'
-import { useDoctrineStore } from '@/stores/doctrine'
 import { useToastStore } from '@/stores/toast'
 
 const router = useRouter()
-const doctrineStore = useDoctrineStore()
-const checkinStore = useCheckinStore()
+const commandCenterStore = useCommandCenterStore()
 const decisionStore = useDecisionStore()
-const disciplineStore = useDisciplineStore()
 const toastStore = useToastStore()
 
 const loading = ref(false)
+const signInRequired = ref(false)
 
-const doctrineReady = computed(() => Boolean(doctrineStore.doctrine))
-const todayCheckin = computed(() => checkinStore.todayCheckin)
-const checkinDone = computed(() => Boolean(todayCheckin.value))
+const doctrineReady = computed(() => commandCenterStore.doctrineConfigured)
+const todayCheckin = computed(() => commandCenterStore.todayCheckin)
+const checkinDone = computed(() => commandCenterStore.checkinCompleted)
 const streak = computed(
   () =>
-    disciplineStore.streak ?? {
+    commandCenterStore.streak ?? {
       current_streak: 0,
       longest_streak: 0,
       last_broken_date: null,
     },
 )
-const lastDecision = computed(() => decisionStore.lastDecision)
+const lastDecision = computed(() => decisionStore.lastDecision ?? decisionStore.decisions[0] ?? null)
+const hasFocusMissions = computed(
+  () => Array.isArray(todayCheckin.value?.missions_json) && todayCheckin.value.missions_json.length > 0,
+)
+const showSkeleton = computed(
+  () => loading.value && !commandCenterStore.isLoaded && !decisionStore.isListLoaded,
+)
 
 const verdictVariant = computed(() => {
   const verdict = lastDecision.value?.ai_response_json?.verdict
@@ -51,40 +54,80 @@ const verdictVariant = computed(() => {
   return 'neutral'
 })
 
-const loadDashboard = async () => {
+const loadDashboard = async (options = {}) => {
+  const force = options.force === true
+
   loading.value = true
+  signInRequired.value = false
 
   try {
     await Promise.all([
-      doctrineStore.load(),
-      checkinStore.loadToday(),
-      decisionStore.listDecisions(),
-      disciplineStore.loadStreak(),
+      commandCenterStore.prefetchStatus({ force }),
+      decisionStore.listDecisions({ force, page: 1, perPage: 6 }),
     ])
   } catch (error) {
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      return
+    }
+
     toastStore.error(error.message ?? 'Unable to load dashboard data.')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadDashboard)
+onMounted(() => loadDashboard())
 </script>
 
 <template>
   <div class="space-y-6">
-    <BaseCard v-if="loading" elevated>
-      <div class="flex items-center justify-center py-12 text-muted">
-        <BaseSpinner size="lg" />
-        <span class="ml-3 text-sm">Loading command center...</span>
+    <BaseCard v-if="signInRequired || commandCenterStore.authRequired" elevated>
+      <div class="space-y-4 text-center">
+        <p class="text-lg font-semibold text-[var(--text)]">Sign in required</p>
+        <p class="text-sm text-muted">Your session is missing or expired. Sign in to load command center data.</p>
+        <div class="pt-2">
+          <BaseButton type="button" @click="router.push('/login')">Go to login</BaseButton>
+        </div>
       </div>
     </BaseCard>
 
+    <template v-else-if="showSkeleton">
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <BaseCard v-for="index in 4" :key="`dashboard-skeleton-${index}`" elevated>
+          <div class="space-y-4">
+            <div class="stoic-skeleton h-4 w-1/2 rounded-md" />
+            <div class="stoic-skeleton h-8 w-2/3 rounded-lg" />
+            <div class="stoic-skeleton h-9 w-28 rounded-xl" />
+          </div>
+        </BaseCard>
+      </div>
+
+      <BaseCard elevated title="Today's Focus" subtitle="Primary missions from today check-in.">
+        <div class="space-y-3">
+          <div v-for="index in 3" :key="`focus-skeleton-${index}`" class="stoic-skeleton h-11 rounded-xl" />
+        </div>
+      </BaseCard>
+    </template>
+
     <template v-else>
+      <div class="flex justify-end">
+        <BaseButton
+          type="button"
+          size="sm"
+          variant="ghost"
+          :loading="loading"
+          :disabled="loading"
+          @click="loadDashboard({ force: true })"
+        >
+          Refresh status
+        </BaseButton>
+      </div>
+
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <BaseCard elevated title="Doctrine Status" subtitle="Rule framework">
           <BaseBadge :variant="doctrineReady ? 'success' : 'warning'">
-            {{ doctrineReady ? 'Set' : 'Not set' }}
+            {{ doctrineReady ? 'Configured' : 'Missing' }}
           </BaseBadge>
           <div class="mt-4">
             <BaseButton type="button" size="sm" variant="secondary" @click="router.push('/settings/doctrine')">
@@ -124,7 +167,9 @@ onMounted(loadDashboard)
               {{ lastDecision.context_json?.what || 'No context available.' }}
             </p>
           </template>
-          <p v-else class="text-sm text-muted">No decisions yet.</p>
+          <div v-else class="space-y-3">
+            <p class="text-sm text-muted">No decisions yet. Run your first doctrine-aligned analysis.</p>
+          </div>
           <div class="mt-4">
             <BaseButton type="button" size="sm" @click="router.push('/decision')">
               New decision
@@ -134,7 +179,7 @@ onMounted(loadDashboard)
       </div>
 
       <BaseCard elevated title="Today's Focus" subtitle="Primary missions from today check-in.">
-        <template v-if="todayCheckin">
+        <template v-if="todayCheckin && hasFocusMissions">
           <ul class="space-y-2">
             <li
               v-for="(mission, index) in todayCheckin.missions_json"
@@ -149,7 +194,7 @@ onMounted(loadDashboard)
           </p>
         </template>
         <template v-else>
-          <p class="text-sm text-muted">No check-in yet. Define today’s focus to unlock better decisions.</p>
+          <p class="text-sm text-muted">No check-in yet. Define your focus to improve decision quality.</p>
           <div class="mt-4">
             <BaseButton type="button" size="sm" @click="router.push('/checkin')">Create today check-in</BaseButton>
           </div>
@@ -158,3 +203,4 @@ onMounted(loadDashboard)
     </template>
   </div>
 </template>
+

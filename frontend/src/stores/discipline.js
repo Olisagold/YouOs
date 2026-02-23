@@ -13,7 +13,7 @@ export const useDisciplineStore = defineStore('discipline', {
   }),
   actions: {
     async loadStreak(options = {}) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       const force = options.force === true
       const cacheFresh = Date.now() - this.lastFetchAt < STREAK_TTL_MS
@@ -40,3 +40,4 @@ export const useDisciplineStore = defineStore('discipline', {
     },
   },
 })
+

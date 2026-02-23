@@ -61,6 +61,26 @@ class User extends Authenticatable
         return $this->hasMany(WeeklyReview::class);
     }
 
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function pendingActions(): HasMany
+    {
+        return $this->hasMany(PendingAction::class);
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
+    }
+
+    public function telegramLinks(): HasMany
+    {
+        return $this->hasMany(TelegramLink::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
