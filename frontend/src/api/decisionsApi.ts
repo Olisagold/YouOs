@@ -13,9 +13,26 @@ export const decisionsApi = {
     return response.data
   },
 
-  async list(category?: DecisionCategory): Promise<Paginated<DecisionRecord>> {
+  async list(
+    category?: DecisionCategory,
+    options: { page?: number; perPage?: number } = {},
+  ): Promise<Paginated<DecisionRecord>> {
+    const params: Record<string, unknown> = {}
+
+    if (category) {
+      params.category = category
+    }
+
+    if (Number.isFinite(options.page) && Number(options.page) > 0) {
+      params.page = Number(options.page)
+    }
+
+    if (Number.isFinite(options.perPage) && Number(options.perPage) > 0) {
+      params.per_page = Number(options.perPage)
+    }
+
     const response = await api.get<Paginated<DecisionRecord>>('/api/v1/decisions', {
-      params: category ? { category } : {},
+      params,
     })
     return response.data
   },

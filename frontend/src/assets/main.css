@@ -70,6 +70,19 @@
     backdrop-filter: blur(12px);
   }
 
+  .stoic-skeleton {
+    background:
+      linear-gradient(
+        100deg,
+        rgb(127 149 179 / 0.08) 20%,
+        rgb(127 149 179 / 0.26) 38%,
+        rgb(127 149 179 / 0.08) 54%
+      ),
+      rgb(16 24 36 / 0.75);
+    background-size: 220% 100%;
+    animation: stoic-skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)];
     --tw-ring-color: var(--focus-ring);
@@ -88,6 +101,15 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes stoic-skeleton-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
   }
 }
 

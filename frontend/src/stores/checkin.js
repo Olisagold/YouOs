@@ -14,7 +14,7 @@ export const useCheckinStore = defineStore('checkin', {
   }),
   actions: {
     async loadToday(options = {}) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       const force = options.force === true
       const currentKey = todayKey()
@@ -50,7 +50,7 @@ export const useCheckinStore = defineStore('checkin', {
     },
 
     async create(payload) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       if (this.isCreating) {
         return this.todayCheckin
@@ -70,3 +70,4 @@ export const useCheckinStore = defineStore('checkin', {
     },
   },
 })
+

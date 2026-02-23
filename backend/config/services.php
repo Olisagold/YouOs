@@ -39,4 +39,9 @@ return [
         'api_key' => env('OPENROUTER_API_KEY'),
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'secret_token' => env('TELEGRAM_SECRET_TOKEN'),
+    ],
+
 ];

@@ -97,12 +97,12 @@ router.beforeEach(async (to) => {
     await authStore.initialize()
   }
 
-  // if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-  //   return {
-  //     path: '/login',
-  //     query: to.fullPath !== '/dashboard' ? { redirect: to.fullPath } : {},
-  //   }
-  // }
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return {
+      path: '/login',
+      query: to.fullPath !== '/dashboard' ? { redirect: to.fullPath } : {},
+    }
+  }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return { path: '/dashboard' }

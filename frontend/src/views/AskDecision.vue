@@ -7,6 +7,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
+import { isSignInRequiredError } from '@/lib/authErrors'
 import { useDecisionStore } from '@/stores/decision'
 import { useToastStore } from '@/stores/toast'
 
@@ -45,6 +46,7 @@ const submitError = reactive({
 
 const aiResponse = ref(null)
 const isSubmitting = computed(() => decisionStore.isCreating)
+const signInRequired = ref(false)
 
 const clearErrors = () => {
   errors.category = ''
@@ -124,7 +126,7 @@ const removeAlternative = (index) => {
 
 const applySubmitError = (error) => {
   submitError.code = error?.error ?? 'request_failed'
-  submitError.message = error?.message ?? 'Unable to process this decision.'
+  submitError.message = error?.message ?? 'Unable to process this decision request.'
 }
 
 const retry = async () => {
@@ -137,6 +139,7 @@ const submit = async () => {
   }
 
   clearSubmitError()
+  signInRequired.value = false
 
   if (!validate()) {
     toastStore.warning('Fix decision fields before submitting.')
@@ -161,18 +164,20 @@ const submit = async () => {
   } catch (error) {
     applySubmitError(error)
 
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      return
+    }
+
     if (error?.error === 'doctrine_required') {
-      toastStore.warning('Doctrine required before decision analysis.')
       return
     }
 
     if (error?.error === 'daily_checkin_required') {
-      toastStore.warning('Complete today check-in before decision analysis.')
       return
     }
 
     if (error?.error === 'openrouter_unavailable' || error?.error === 'ai_response_invalid') {
-      toastStore.error('AI service unavailable right now. Retry in a moment.')
       return
     }
 
@@ -182,16 +187,38 @@ const submit = async () => {
 
 const requiresDoctrine = computed(() => submitError.code === 'doctrine_required')
 const requiresCheckin = computed(() => submitError.code === 'daily_checkin_required')
+const aiInvalidResponse = computed(() => submitError.code === 'ai_response_invalid')
 const retryableAiError = computed(
   () =>
     submitError.code === 'openrouter_unavailable' ||
     submitError.code === 'ai_response_invalid',
 )
+const submitErrorDisplayMessage = computed(() => {
+  if (submitError.code === 'ai_response_invalid') {
+    return 'AI output invalid, try again.'
+  }
+
+  if (submitError.code === 'openrouter_unavailable') {
+    return 'AI service unavailable right now. Retry in a moment.'
+  }
+
+  return submitError.message
+})
 </script>
 
 <template>
   <div class="space-y-6">
-    <BaseCard elevated title="Ask Decision" subtitle="Submit one structured decision request for doctrine analysis.">
+    <BaseCard v-if="signInRequired" elevated>
+      <div class="space-y-4 text-center">
+        <p class="text-lg font-semibold text-[var(--text)]">Sign in required</p>
+        <p class="text-sm text-muted">You need an active session before running decision analysis.</p>
+        <div class="pt-2">
+          <BaseButton type="button" @click="router.push('/login')">Go to login</BaseButton>
+        </div>
+      </div>
+    </BaseCard>
+
+    <BaseCard v-else elevated title="Ask Decision" subtitle="Submit one structured decision request for doctrine analysis.">
       <form class="space-y-6" @submit.prevent="submit">
         <section class="space-y-4">
           <div class="space-y-2">
@@ -309,7 +336,10 @@ const retryableAiError = computed(
           v-if="submitError.message"
           class="rounded-xl border border-[rgb(188,125,125,0.4)] bg-[rgb(188,125,125,0.12)] p-4"
         >
-          <p class="text-sm font-medium text-[rgb(240,208,208)]">{{ submitError.message }}</p>
+          <p class="text-sm font-medium text-[rgb(240,208,208)]">{{ submitErrorDisplayMessage }}</p>
+          <p v-if="aiInvalidResponse" class="mt-2 text-xs text-[rgb(230,194,194)]">
+            The model returned malformed output. Retry to request a fresh response.
+          </p>
 
           <div class="mt-3 flex flex-wrap gap-2">
             <BaseButton v-if="requiresDoctrine" type="button" size="sm" variant="secondary" @click="router.push('/settings/doctrine')">

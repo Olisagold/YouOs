@@ -1,16 +1,19 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Plus, Trash2 } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSpinner from '@/components/ui/BaseSpinner.vue'
+import { isSignInRequiredError } from '@/lib/authErrors'
 import { useDoctrineStore } from '@/stores/doctrine'
 import { useToastStore } from '@/stores/toast'
 
 const doctrineStore = useDoctrineStore()
 const toastStore = useToastStore()
+const router = useRouter()
 
 const LIMITS = {
   goals: 10,
@@ -45,6 +48,7 @@ const errors = reactive({
 
 const hasLoaded = ref(false)
 const createMode = ref(false)
+const signInRequired = ref(false)
 
 const isBusy = computed(() => doctrineStore.isLoading || doctrineStore.isSaving)
 const hasDoctrine = computed(() => Boolean(doctrineStore.doctrine))
@@ -216,6 +220,7 @@ const removeAt = (listName, index) => {
 
 const loadDoctrine = async () => {
   try {
+    signInRequired.value = false
     const doctrine = await doctrineStore.load()
 
     if (doctrine) {
@@ -227,6 +232,12 @@ const loadDoctrine = async () => {
 
     hasLoaded.value = true
   } catch (error) {
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      hasLoaded.value = true
+      return
+    }
+
     toastStore.error(error.message ?? 'Unable to load doctrine.')
     hasLoaded.value = true
   }
@@ -268,11 +279,17 @@ const submit = async () => {
   }
 
   try {
+    signInRequired.value = false
     const saved = await doctrineStore.save(payload)
     hydrateFromDoctrine(saved)
     createMode.value = false
     toastStore.success('Doctrine updated')
   } catch (error) {
+    if (isSignInRequiredError(error)) {
+      signInRequired.value = true
+      return
+    }
+
     if (error?.details && typeof error.details === 'object') {
       errors.general = 'Server validation failed. Review your doctrine fields and retry.'
     }
@@ -285,7 +302,17 @@ onMounted(loadDoctrine)
 
 <template>
   <div class="space-y-6">
-    <BaseCard elevated title="Doctrine Settings" subtitle="Define goals, rules, habits, and measurable weekly targets.">
+    <BaseCard v-if="signInRequired" elevated>
+      <div class="space-y-4 text-center">
+        <p class="text-lg font-semibold text-[var(--text)]">Sign in required</p>
+        <p class="text-sm text-muted">You need an active session to manage doctrine settings.</p>
+        <div class="pt-2">
+          <BaseButton type="button" @click="router.push('/login')">Go to login</BaseButton>
+        </div>
+      </div>
+    </BaseCard>
+
+    <BaseCard v-else elevated title="Doctrine Settings" subtitle="Define goals, rules, habits, and measurable weekly targets.">
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>

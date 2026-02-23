@@ -11,7 +11,7 @@ export const useDoctrineStore = defineStore('doctrine', {
   }),
   actions: {
     async load(options = {}) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       const force = options.force === true
 
@@ -44,7 +44,7 @@ export const useDoctrineStore = defineStore('doctrine', {
     },
 
     async save(payload) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       this.isSaving = true
 
@@ -59,3 +59,4 @@ export const useDoctrineStore = defineStore('doctrine', {
     },
   },
 })
+

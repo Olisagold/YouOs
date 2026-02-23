@@ -16,7 +16,7 @@ export const useWeeklyReviewStore = defineStore('weeklyReview', {
   }),
   actions: {
     async list(options = {}) {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       const force = options.force === true
       const cacheFresh = Date.now() - this.lastListFetchAt < LIST_TTL_MS
@@ -45,7 +45,7 @@ export const useWeeklyReviewStore = defineStore('weeklyReview', {
     },
 
     async generate() {
-      await waitForAuthInitialization()
+      await waitForAuthInitialization({ requireAuth: true })
 
       if (this.isGenerating) {
         return this.latestReview
@@ -66,3 +66,4 @@ export const useWeeklyReviewStore = defineStore('weeklyReview', {
     },
   },
 })
+
