@@ -18,10 +18,3 @@ cd frontend
 npm run dev
 ```
 
-## Required Environment Variables
-
-Set these in `backend/.env`:
-
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
